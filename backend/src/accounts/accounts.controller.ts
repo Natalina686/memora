@@ -1,0 +1,17 @@
+import { Controller, Get, Post } from '@nestjs/common';
+import { AccountsService } from './accounts.service';
+
+@Controller('accounts')
+export class AccountsController {
+  constructor(private readonly accountsService: AccountsService) {}
+
+  @Get()
+  findAll() {
+    return this.accountsService.findAll();
+  }
+
+  @Post()
+  create() {
+    return this.accountsService.create();
+  }
+}

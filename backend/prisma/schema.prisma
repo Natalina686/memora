@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum QuestionType {
+  OPEN_TEXT
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+}
+
+enum AIOperation {
+  STRUCTURE_KNOWLEDGE
+  GENERATE_QUESTIONS
+}
+
+enum AIProcessingStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum ReviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  learners Learner[]
+}
+
+model Learner {
+  id        String   @id @default(uuid())
+  accountId String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account          Account               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  collections      KnowledgeCollection[]
+  quizSessions     QuizSession[]
+  learningProgress LearningProgress[]
+  reviewSchedules  ReviewSchedule[]
+  notifications    Notification[]
+
+  @@index([accountId])
+}
+
+model KnowledgeCollection {
+  id          String   @id @default(uuid())
+  learnerId   String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  learner   Learner     @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  knowledge Knowledge[]
+
+  @@index([learnerId])
+}
+
+model Knowledge {
+  id             String   @id @default(uuid())
+  collectionId   String
+  title          String
+  sourceContent  String
+  structuredData Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  collection       KnowledgeCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  questions        Question[]
+  learningProgress LearningProgress[]
+  reviewSchedules  ReviewSchedule[]
+  aiProcessingLogs AIProcessingLog[]
+
+  @@index([collectionId])
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  knowledgeId   String
+  type          QuestionType
+  prompt        String
+  options       Json?
+  correctAnswer Json
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+  answers   Answer[]
+
+  @@index([knowledgeId])
+}
+
+model QuizSession {
+  id          String    @id @default(uuid())
+  learnerId   String
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  learner Learner  @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  answers Answer[]
+
+  @@index([learnerId])
+}
+
+model Answer {
+  id            String   @id @default(uuid())
+  quizSessionId String
+  questionId    String
+  answer        Json
+  isCorrect     Boolean
+  answeredAt    DateTime @default(now())
+
+  quizSession QuizSession @relation(fields: [quizSessionId], references: [id], onDelete: Cascade)
+  question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([quizSessionId])
+  @@index([questionId])
+}
+
+model LearningProgress {
+  id               String   @id @default(uuid())
+  learnerId        String
+  knowledgeId      String
+  repetition       Int      @default(0)
+  easinessFactor   Float    @default(2.5)
+  interval         Int      @default(0)
+  correctAnswers   Int      @default(0)
+  incorrectAnswers Int      @default(0)
+  accuracy         Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  learner   Learner   @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, knowledgeId])
+  @@index([learnerId])
+  @@index([knowledgeId])
+}
+
+model ReviewSchedule {
+  id           String       @id @default(uuid())
+  learnerId    String
+  knowledgeId  String
+  nextReviewAt DateTime
+  status       ReviewStatus @default(SCHEDULED)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  learner   Learner   @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, knowledgeId])
+  @@index([nextReviewAt])
+}
+
+model Notification {
+  id          String             @id @default(uuid())
+  learnerId   String
+  type        String
+  message     String
+  scheduledAt DateTime
+  sentAt      DateTime?
+  status      NotificationStatus @default(PENDING)
+  createdAt   DateTime           @default(now())
+
+  learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId])
+  @@index([scheduledAt])
+}
+
+model AIProcessingLog {
+  id          String             @id @default(uuid())
+  knowledgeId String
+  operation   AIOperation        @default(STRUCTURE_KNOWLEDGE)
+  input       Json
+  output      Json?
+  model       String
+  status      AIProcessingStatus @default(PENDING)
+  createdAt   DateTime           @default(now())
+  completedAt DateTime?
+
+  knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeId])
+  @@index([createdAt])
+}
