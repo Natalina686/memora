@@ -2,23 +2,23 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
-export class KnowledgeCollectionsService {
+export class ReviewScheduleService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.knowledgeCollection.findMany({
+    return this.prisma.reviewSchedule.findMany({
       orderBy: {
-        createdAt: 'desc',
+        nextReviewAt: 'asc',
       },
     });
   }
 
-  async create(learnerId: string, name: string, description?: string) {
-    return this.prisma.knowledgeCollection.create({
+  async create(learnerId: string, knowledgeId: string, nextReviewAt: Date) {
+    return this.prisma.reviewSchedule.create({
       data: {
         learnerId,
-        name,
-        description,
+        knowledgeId,
+        nextReviewAt,
       },
     });
   }
