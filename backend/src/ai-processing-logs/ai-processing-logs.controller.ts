@@ -16,16 +16,16 @@ export class AiProcessingLogsController {
 
   @Post()
   create(
-    @Body('knowledgeId') knowledgeId: string,
     @Body('operation') operation: AIOperation,
     @Body('input') input: Prisma.InputJsonValue,
     @Body('model') model: string,
+    @Body('knowledgeId') knowledgeId?: string,
   ) {
     return this.aiProcessingLogsService.create(
-      knowledgeId,
       operation,
       input,
       model,
+      knowledgeId,
     );
   }
 }

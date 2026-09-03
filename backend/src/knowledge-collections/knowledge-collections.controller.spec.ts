@@ -9,7 +9,9 @@ describe('KnowledgeCollectionsController', () => {
       controllers: [KnowledgeCollectionsController],
     }).compile();
 
-    controller = module.get<KnowledgeCollectionsController>(KnowledgeCollectionsController);
+    controller = module.get<KnowledgeCollectionsController>(
+      KnowledgeCollectionsController,
+    );
   });
 
   it('should be defined', () => {

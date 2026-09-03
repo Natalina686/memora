@@ -9,7 +9,9 @@ describe('AiProcessingLogsController', () => {
       controllers: [AiProcessingLogsController],
     }).compile();
 
-    controller = module.get<AiProcessingLogsController>(AiProcessingLogsController);
+    controller = module.get<AiProcessingLogsController>(
+      AiProcessingLogsController,
+    );
   });
 
   it('should be defined', () => {

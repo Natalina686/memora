@@ -1,27 +1,51 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
+
 import { KnowledgeCollectionsService } from './knowledge-collections.service';
 
 @Controller('knowledge-collections')
+@UseGuards(JwtAuthGuard)
 export class KnowledgeCollectionsController {
   constructor(
     private readonly knowledgeCollectionsService: KnowledgeCollectionsService,
   ) {}
 
   @Get()
-  findAll() {
-    return this.knowledgeCollectionsService.findAll();
+  findAll(@Req() request: AuthenticatedRequest) {
+    return this.knowledgeCollectionsService.findAll(request.user!.accountId);
   }
 
   @Post()
   create(
     @Body('learnerId') learnerId: string,
     @Body('name') name: string,
-    @Body('description') description?: string,
+    @Body('description')
+    description: string | undefined,
+    @Req() request: AuthenticatedRequest,
   ) {
+    if (!learnerId?.trim()) {
+      throw new BadRequestException('learnerId is required');
+    }
+
+    if (!name?.trim()) {
+      throw new BadRequestException('name is required');
+    }
+
     return this.knowledgeCollectionsService.create(
-      learnerId,
-      name,
-      description,
+      learnerId.trim(),
+      request.user!.accountId,
+      name.trim(),
+      description?.trim(),
     );
   }
 }

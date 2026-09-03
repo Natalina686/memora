@@ -1,21 +1,58 @@
-import { Body, Controller, Get, Post } from 
-'@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
+
 import { LearnersService } from './learners.service';
 
 @Controller('learners')
+@UseGuards(JwtAuthGuard)
 export class LearnersController {
-  constructor(private readonly learnersService: 
-LearnersService) {}
+  constructor(private readonly learnersService: LearnersService) {}
 
   @Get()
-  findAll() {
-    return this.learnersService.findAll();
+  findAll(@Req() request: AuthenticatedRequest) {
+    return this.learnersService.findAllForAccount(request.user!.accountId);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.learnersService.findOneForAccount(id, request.user!.accountId);
   }
 
   @Post()
-  create(@Body() body: { accountId: string; name: string }) 
-{
-    return this.learnersService.create(body.accountId, 
-body.name);
+  create(@Body('name') name: string, @Req() request: AuthenticatedRequest) {
+    if (!name?.trim()) {
+      throw new BadRequestException('Learner name is required');
+    }
+
+    return this.learnersService.create(request.user!.accountId, name.trim());
+  }
+
+  @Patch(':id/telegram')
+  setTelegramChatId(
+    @Param('id') id: string,
+    @Body('telegramChatId') telegramChatId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (!telegramChatId?.trim()) {
+      throw new BadRequestException('telegramChatId is required');
+    }
+
+    return this.learnersService.setTelegramChatId(
+      id,
+      request.user!.accountId,
+      telegramChatId.trim(),
+    );
   }
 }

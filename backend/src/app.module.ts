@@ -14,12 +14,29 @@ import { LearningProgressModule } from './learning-progress/learning-progress.mo
 import { ReviewScheduleModule } from './review-schedule/review-schedule.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AiProcessingLogsModule } from './ai-processing-logs/ai-processing-logs.module';
+import { AiModule } from './ai/ai.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
-ConfigModule.forRoot({ isGlobal: true }),
-PrismaModule, 
-AccountsModule, LearnersModule, KnowledgeCollectionsModule, KnowledgeModule, QuestionsModule, QuizSessionsModule, AnswersModule, LearningProgressModule, ReviewScheduleModule, NotificationsModule, AiProcessingLogsModule],
+    ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
+    PrismaModule,
+    AccountsModule,
+    LearnersModule,
+    KnowledgeCollectionsModule,
+    KnowledgeModule,
+    QuestionsModule,
+    QuizSessionsModule,
+    AnswersModule,
+    LearningProgressModule,
+    ReviewScheduleModule,
+    NotificationsModule,
+    AiProcessingLogsModule,
+    AiModule,
+    AuthModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

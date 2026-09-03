@@ -1,13 +1,42 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
+
 import { ReviewScheduleService } from './review-schedule.service';
 
 @Controller('review-schedule')
+@UseGuards(JwtAuthGuard)
 export class ReviewScheduleController {
   constructor(private readonly reviewScheduleService: ReviewScheduleService) {}
 
   @Get()
-  findAll() {
-    return this.reviewScheduleService.findAll();
+  findAll(@Req() request: AuthenticatedRequest) {
+    return this.reviewScheduleService.findAll(request.user!.accountId);
+  }
+
+  @Get('due')
+  findDueReviews(@Req() request: AuthenticatedRequest) {
+    return this.reviewScheduleService.findDueReviews(request.user!.accountId);
+  }
+
+  @Get('due/:learnerId')
+  findDueReviewsForLearner(
+    @Param('learnerId') learnerId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.reviewScheduleService.findDueReviewsForLearner(
+      learnerId,
+      request.user!.accountId,
+    );
   }
 
   @Post()
@@ -15,11 +44,13 @@ export class ReviewScheduleController {
     @Body('learnerId') learnerId: string,
     @Body('knowledgeId') knowledgeId: string,
     @Body('nextReviewAt') nextReviewAt: string,
+    @Req() request: AuthenticatedRequest,
   ) {
     return this.reviewScheduleService.create(
       learnerId,
       knowledgeId,
       new Date(nextReviewAt),
+      request.user!.accountId,
     );
   }
 }

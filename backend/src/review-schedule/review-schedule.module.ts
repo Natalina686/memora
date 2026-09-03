@@ -4,6 +4,6 @@ import { ReviewScheduleService } from './review-schedule.service';
 
 @Module({
   controllers: [ReviewScheduleController],
-  providers: [ReviewScheduleService]
+  providers: [ReviewScheduleService],
 })
 export class ReviewScheduleModule {}

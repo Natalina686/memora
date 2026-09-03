@@ -4,6 +4,7 @@ import { AiProcessingLogsService } from './ai-processing-logs.service';
 
 @Module({
   controllers: [AiProcessingLogsController],
-  providers: [AiProcessingLogsService]
+  providers: [AiProcessingLogsService],
+  exports: [AiProcessingLogsService],
 })
 export class AiProcessingLogsModule {}

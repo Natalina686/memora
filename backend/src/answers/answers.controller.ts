@@ -1,14 +1,19 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { Prisma } from 'generated/prisma/client';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
+
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
+
 import { AnswersService } from './answers.service';
 
 @Controller('answers')
+@UseGuards(JwtAuthGuard)
 export class AnswersController {
   constructor(private readonly answersService: AnswersService) {}
 
   @Get()
-  findAll() {
-    return this.answersService.findAll();
+  findAll(@Req() request: AuthenticatedRequest) {
+    return this.answersService.findAll(request.user!.accountId);
   }
 
   @Post()
@@ -16,13 +21,13 @@ export class AnswersController {
     @Body('quizSessionId') quizSessionId: string,
     @Body('questionId') questionId: string,
     @Body('answer') answer: Prisma.InputJsonValue,
-    @Body('isCorrect') isCorrect: boolean,
+    @Req() request: AuthenticatedRequest,
   ) {
     return this.answersService.create(
       quizSessionId,
       questionId,
       answer,
-      isCorrect,
+      request.user!.accountId,
     );
   }
 }
