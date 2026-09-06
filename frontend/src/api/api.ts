@@ -97,9 +97,38 @@ export interface CompletedQuizSession
   answers: Answer[]
 }
 
-interface GeneratedQuestionsResponse {
-  questions?: Question[]
-  createdQuestions?: Question[]
+export interface GeneratedQuestionPreview {
+  type: QuestionType
+  prompt: string
+  options: string[] | null
+  correctAnswer:
+    | string
+    | string[]
+    | boolean
+}
+
+export interface GenerateQuestionsResponse {
+  processingLogId: string
+  questions: GeneratedQuestionPreview[]
+}
+
+export interface ApprovedQuestion {
+  id: string
+  knowledgeId: string
+  type: QuestionType
+  prompt: string
+  options: string[] | null
+  correctAnswer:
+    | string
+    | string[]
+    | boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ApproveQuestionsResponse {
+  processingLogId: string
+  questions: ApprovedQuestion[]
 }
 
 async function request<T>(
@@ -185,6 +214,52 @@ export function getKnowledgeCollections() {
   )
 }
 
+export function createKnowledgeCollection(
+  learnerId: string,
+  name: string,
+  description?: string,
+) {
+  return request<KnowledgeCollection>(
+    '/knowledge-collections',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        learnerId,
+        name,
+        description,
+      }),
+    },
+  )
+}
+
+export function updateKnowledgeCollection(
+  collectionId: string,
+  name: string,
+  description?: string,
+) {
+  return request<KnowledgeCollection>(
+    `/knowledge-collections/${collectionId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name,
+        description,
+      }),
+    },
+  )
+}
+
+export function deleteKnowledgeCollection(
+  collectionId: string,
+) {
+  return request<KnowledgeCollection>(
+    `/knowledge-collections/${collectionId}`,
+    {
+      method: 'DELETE',
+    },
+  )
+}
+
 export function structureKnowledge(
   sourceContent: string,
 ) {
@@ -218,34 +293,25 @@ export function getKnowledge() {
   return request<Knowledge[]>('/knowledge')
 }
 
-export async function generateQuestions(
+export function generateQuestions(
   knowledgeId: string,
 ) {
-  const result =
-    await request<
-      | Question[]
-      | GeneratedQuestionsResponse
-    >(
-      `/ai/knowledge/${knowledgeId}/generate-questions`,
-      {
-        method: 'POST',
-      },
-    )
+  return request<GenerateQuestionsResponse>(
+    `/ai/knowledge/${knowledgeId}/generate-questions`,
+    {
+      method: 'POST',
+    },
+  )
+}
 
-  if (Array.isArray(result)) {
-    return result
-  }
-
-  if (result.questions) {
-    return result.questions
-  }
-
-  if (result.createdQuestions) {
-    return result.createdQuestions
-  }
-
-  throw new Error(
-    'Backend did not return generated questions',
+export function approveGeneratedQuestions(
+  processingLogId: string,
+) {
+  return request<ApproveQuestionsResponse>(
+    `/ai/processing/${processingLogId}/approve-questions`,
+    {
+      method: 'POST',
+    },
   )
 }
 
@@ -294,5 +360,56 @@ export function completeQuizSession(
     {
       method: 'PATCH',
     },
+  )
+}
+
+export interface LearningProgress {
+  id: string
+  learnerId: string
+  knowledgeId: string
+  repetition: number
+  easinessFactor: number
+  interval: number
+  correctAnswers: number
+  incorrectAnswers: number
+  accuracy: number
+  createdAt: string
+  updatedAt: string
+
+  knowledge: {
+    id: string
+    title: string
+  }
+
+  learner: {
+    id: string
+    name: string
+  }
+}
+
+export type ReviewStatus =
+  | 'SCHEDULED'
+  | 'COMPLETED'
+  | 'CANCELLED'
+
+export interface ReviewSchedule {
+  id: string
+  learnerId: string
+  knowledgeId: string
+  nextReviewAt: string
+  status: ReviewStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export function getLearningProgress() {
+  return request<LearningProgress[]>(
+    '/learning-progress',
+  )
+}
+
+export function getReviewSchedule() {
+  return request<ReviewSchedule[]>(
+    '/review-schedule',
   )
 }

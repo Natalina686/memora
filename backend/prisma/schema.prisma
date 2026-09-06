@@ -44,6 +44,7 @@ model Account {
   passwordHash  String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  aiProcessingLogs AIProcessingLog[]
 
   learners Learner[]
 }
@@ -196,6 +197,7 @@ model Notification {
 
 model AIProcessingLog {
   id          String             @id @default(uuid())
+  accountId   String
   knowledgeId String?
   operation   AIOperation        @default(STRUCTURE_KNOWLEDGE)
   input       Json
@@ -205,8 +207,10 @@ model AIProcessingLog {
   createdAt   DateTime           @default(now())
   completedAt DateTime?
 
+  account   Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
   knowledge Knowledge? @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
 
+  @@index([accountId])
   @@index([knowledgeId])
   @@index([createdAt])
 }

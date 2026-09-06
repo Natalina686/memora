@@ -2,7 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -29,8 +32,7 @@ export class KnowledgeCollectionsController {
   create(
     @Body('learnerId') learnerId: string,
     @Body('name') name: string,
-    @Body('description')
-    description: string | undefined,
+    @Body('description') description: string | undefined,
     @Req() request: AuthenticatedRequest,
   ) {
     if (!learnerId?.trim()) {
@@ -46,6 +48,36 @@ export class KnowledgeCollectionsController {
       request.user!.accountId,
       name.trim(),
       description?.trim(),
+    );
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') collectionId: string,
+    @Body('name') name: string,
+    @Body('description') description: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (!name?.trim()) {
+      throw new BadRequestException('name is required');
+    }
+
+    return this.knowledgeCollectionsService.update(
+      collectionId,
+      request.user!.accountId,
+      name.trim(),
+      description?.trim(),
+    );
+  }
+
+  @Delete(':id')
+  remove(
+    @Param('id') collectionId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.knowledgeCollectionsService.remove(
+      collectionId,
+      request.user!.accountId,
     );
   }
 }

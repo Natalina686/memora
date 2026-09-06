@@ -14,18 +14,22 @@ import {
 export class AiProcessingLogsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(accountId: string) {
     return this.prisma.aIProcessingLog.findMany({
+      where: {
+        accountId,
+      },
       orderBy: {
         createdAt: 'desc',
       },
     });
   }
 
-  async findOne(id: string) {
-    const log = await this.prisma.aIProcessingLog.findUnique({
+  async findOne(id: string, accountId: string) {
+    const log = await this.prisma.aIProcessingLog.findFirst({
       where: {
         id,
+        accountId,
       },
     });
 
@@ -40,15 +44,31 @@ export class AiProcessingLogsService {
     operation: AIOperation,
     input: Prisma.InputJsonValue,
     model: string,
+    accountId: string,
     knowledgeId?: string,
   ) {
     return this.prisma.aIProcessingLog.create({
       data: {
-        knowledgeId,
         operation,
         input,
         model,
         status: AIProcessingStatus.PENDING,
+
+        account: {
+          connect: {
+            id: accountId,
+          },
+        },
+
+        ...(knowledgeId
+          ? {
+              knowledge: {
+                connect: {
+                  id: knowledgeId,
+                },
+              },
+            }
+          : {}),
       },
     });
   }
@@ -81,8 +101,8 @@ export class AiProcessingLogsService {
     });
   }
 
-  async attachKnowledge(id: string, knowledgeId: string) {
-    const log = await this.findOne(id);
+  async attachKnowledge(id: string, knowledgeId: string, accountId: string) {
+    const log = await this.findOne(id, accountId);
 
     if (log.status !== AIProcessingStatus.SUCCESS) {
       throw new BadRequestException(
@@ -94,6 +114,21 @@ export class AiProcessingLogsService {
       throw new BadRequestException(
         'This AI processing result has already been approved',
       );
+    }
+
+    const knowledge = await this.prisma.knowledge.findFirst({
+      where: {
+        id: knowledgeId,
+        collection: {
+          learner: {
+            accountId,
+          },
+        },
+      },
+    });
+
+    if (!knowledge) {
+      throw new NotFoundException('Knowledge not found');
     }
 
     return this.prisma.aIProcessingLog.update({

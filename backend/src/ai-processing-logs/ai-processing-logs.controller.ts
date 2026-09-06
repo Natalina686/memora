@@ -1,31 +1,22 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { Prisma } from '../../generated/prisma/client';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
+
 import { AiProcessingLogsService } from './ai-processing-logs.service';
-import { AIOperation } from '../../generated/prisma/client';
 
 @Controller('ai-processing-logs')
+@UseGuards(JwtAuthGuard)
 export class AiProcessingLogsController {
   constructor(
     private readonly aiProcessingLogsService: AiProcessingLogsService,
   ) {}
 
   @Get()
-  findAll() {
-    return this.aiProcessingLogsService.findAll();
-  }
-
-  @Post()
-  create(
-    @Body('operation') operation: AIOperation,
-    @Body('input') input: Prisma.InputJsonValue,
-    @Body('model') model: string,
-    @Body('knowledgeId') knowledgeId?: string,
+  findAll(
+    @Req()
+    request: AuthenticatedRequest,
   ) {
-    return this.aiProcessingLogsService.create(
-      operation,
-      input,
-      model,
-      knowledgeId,
-    );
+    return this.aiProcessingLogsService.findAll(request.user!.accountId);
   }
 }

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
 import type { AuthenticatedRequest } from '../auth/jwt-auth.guard';
 
 import { AiService } from './ai.service';
@@ -19,7 +20,13 @@ export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Post('structure-knowledge')
-  async structureKnowledge(@Body('sourceContent') sourceContent: string) {
+  async structureKnowledge(
+    @Body('sourceContent')
+    sourceContent: string,
+
+    @Req()
+    request: AuthenticatedRequest,
+  ) {
     if (
       !sourceContent ||
       typeof sourceContent !== 'string' ||
@@ -28,14 +35,22 @@ export class AiController {
       throw new BadRequestException('sourceContent is required');
     }
 
-    return this.aiService.structureKnowledge(sourceContent.trim());
+    return this.aiService.structureKnowledge(
+      sourceContent.trim(),
+      request.user!.accountId,
+    );
   }
 
   @Post('processing/:id/approve')
   async approveStructuredKnowledge(
-    @Param('id') processingLogId: string,
-    @Body('collectionId') collectionId: string,
-    @Req() request: AuthenticatedRequest,
+    @Param('id')
+    processingLogId: string,
+
+    @Body('collectionId')
+    collectionId: string,
+
+    @Req()
+    request: AuthenticatedRequest,
   ) {
     if (!collectionId?.trim()) {
       throw new BadRequestException('collectionId is required');
@@ -50,11 +65,28 @@ export class AiController {
 
   @Post('knowledge/:knowledgeId/generate-questions')
   async generateQuestions(
-    @Param('knowledgeId') knowledgeId: string,
-    @Req() request: AuthenticatedRequest,
+    @Param('knowledgeId')
+    knowledgeId: string,
+
+    @Req()
+    request: AuthenticatedRequest,
   ) {
     return this.aiService.generateQuestions(
       knowledgeId,
+      request.user!.accountId,
+    );
+  }
+
+  @Post('processing/:id/approve-questions')
+  async approveGeneratedQuestions(
+    @Param('id')
+    processingLogId: string,
+
+    @Req()
+    request: AuthenticatedRequest,
+  ) {
+    return this.aiService.approveGeneratedQuestions(
+      processingLogId,
       request.user!.accountId,
     );
   }

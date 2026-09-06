@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+
 import { PrismaService } from '../prisma/prisma.service';
 
 interface SM2Result {
@@ -15,15 +16,61 @@ export class LearningProgressService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(accountId: string) {
     return this.prisma.learningProgress.findMany({
+      where: {
+        learner: {
+          accountId,
+        },
+      },
       orderBy: {
         updatedAt: 'desc',
+      },
+      include: {
+        knowledge: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+        learner: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
   }
 
-  async create(learnerId: string, knowledgeId: string) {
+  async create(learnerId: string, knowledgeId: string, accountId: string) {
+    const learner = await this.prisma.learner.findFirst({
+      where: {
+        id: learnerId,
+        accountId,
+      },
+    });
+
+    if (!learner) {
+      throw new NotFoundException('Learner not found');
+    }
+
+    const knowledge = await this.prisma.knowledge.findFirst({
+      where: {
+        id: knowledgeId,
+        collection: {
+          learnerId,
+          learner: {
+            accountId,
+          },
+        },
+      },
+    });
+
+    if (!knowledge) {
+      throw new NotFoundException('Knowledge not found');
+    }
+
     return this.prisma.learningProgress.create({
       data: {
         learnerId,

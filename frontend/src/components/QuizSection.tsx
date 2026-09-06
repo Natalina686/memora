@@ -17,10 +17,12 @@ import {
 
 interface QuizSectionProps {
   learners: Learner[]
+  onQuizCompleted?: () => void
 }
 
 export function QuizSection({
   learners,
+  onQuizCompleted,
 }: QuizSectionProps) {
   const [
     selectedLearnerId,
@@ -279,6 +281,7 @@ export function QuizSection({
         )
 
         setCompleted(true)
+        onQuizCompleted?.()
       } catch (error) {
         setError(
           error instanceof Error

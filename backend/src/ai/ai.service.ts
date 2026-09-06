@@ -8,17 +8,20 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 
 import { AIOperation, Prisma } from '../../generated/prisma/client';
+
 import { AiProcessingLogsService } from '../ai-processing-logs/ai-processing-logs.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
-import { QuestionsService } from 'src/questions/questions.service';
+import { QuestionsService } from '../questions/questions.service';
 
 export interface StructuredKnowledge {
   title: string;
   summary: string;
+
   facts: Array<{
     key: string;
     value: string;
   }>;
+
   keywords: string[];
 }
 
@@ -30,6 +33,11 @@ export interface GeneratedQuestion {
   options: string[] | null;
 
   correctAnswer: string | string[] | boolean;
+}
+
+interface GeneratedQuestionsLogOutput {
+  questions: GeneratedQuestion[];
+  approved: boolean;
 }
 
 @Injectable()
@@ -59,7 +67,10 @@ export class AiService {
     });
   }
 
-  async structureKnowledge(sourceContent: string): Promise<{
+  async structureKnowledge(
+    sourceContent: string,
+    accountId: string,
+  ): Promise<{
     processingLogId: string;
     structuredKnowledge: StructuredKnowledge;
   }> {
@@ -69,6 +80,7 @@ export class AiService {
         sourceContent,
       },
       this.model,
+      accountId,
     );
 
     try {
@@ -93,39 +105,52 @@ Keywords should contain only meaningful terms from the source.
             type: 'json_schema',
             name: 'structured_knowledge',
             strict: true,
+
             schema: {
               type: 'object',
+
               properties: {
                 title: {
                   type: 'string',
                 },
+
                 summary: {
                   type: 'string',
                 },
+
                 facts: {
                   type: 'array',
+
                   items: {
                     type: 'object',
+
                     properties: {
                       key: {
                         type: 'string',
                       },
+
                       value: {
                         type: 'string',
                       },
                     },
+
                     required: ['key', 'value'],
+
                     additionalProperties: false,
                   },
                 },
+
                 keywords: {
                   type: 'array',
+
                   items: {
                     type: 'string',
                   },
                 },
               },
+
               required: ['title', 'summary', 'facts', 'keywords'],
+
               additionalProperties: false,
             },
           },
@@ -160,12 +185,16 @@ Keywords should contain only meaningful terms from the source.
       );
     }
   }
+
   async approveStructuredKnowledge(
     processingLogId: string,
     collectionId: string,
     accountId: string,
   ) {
-    const log = await this.aiProcessingLogsService.findOne(processingLogId);
+    const log = await this.aiProcessingLogsService.findOne(
+      processingLogId,
+      accountId,
+    );
 
     if (log.status !== 'SUCCESS') {
       throw new BadRequestException(
@@ -212,12 +241,19 @@ Keywords should contain only meaningful terms from the source.
     await this.aiProcessingLogsService.attachKnowledge(
       processingLogId,
       knowledge.id,
+      accountId,
     );
 
     return knowledge;
   }
 
-  async generateQuestions(knowledgeId: string, accountId: string) {
+  async generateQuestions(
+    knowledgeId: string,
+    accountId: string,
+  ): Promise<{
+    processingLogId: string;
+    questions: GeneratedQuestion[];
+  }> {
     const knowledge = await this.knowledgeService.findOne(
       knowledgeId,
       accountId,
@@ -232,6 +268,7 @@ Keywords should contain only meaningful terms from the source.
         structuredData: knowledge.structuredData,
       },
       this.model,
+      accountId,
       knowledgeId,
     );
 
@@ -355,23 +392,23 @@ Rules:
         questions: GeneratedQuestion[];
       };
 
-      const createdQuestions = await this.questionsService.createMany(
-        knowledgeId,
-        parsed.questions.map((question) => ({
-          type: question.type,
-          prompt: question.prompt,
-          correctAnswer: question.correctAnswer,
-          options: question.options === null ? undefined : question.options,
-        })),
-      );
-
-      await this.aiProcessingLogsService.markSuccess(log.id, {
+      /*
+       * Human-in-the-loop:
+       * questions are NOT persisted yet.
+       */
+      const output: GeneratedQuestionsLogOutput = {
         questions: parsed.questions,
-      } as unknown as Prisma.InputJsonValue);
+        approved: false,
+      };
+
+      await this.aiProcessingLogsService.markSuccess(
+        log.id,
+        output as unknown as Prisma.InputJsonValue,
+      );
 
       return {
         processingLogId: log.id,
-        questions: createdQuestions,
+        questions: parsed.questions,
       };
     } catch (error) {
       const message =
@@ -383,5 +420,73 @@ Rules:
         `AI question generation failed: ${message}`,
       );
     }
+  }
+
+  async approveGeneratedQuestions(processingLogId: string, accountId: string) {
+    const log = await this.aiProcessingLogsService.findOne(
+      processingLogId,
+      accountId,
+    );
+
+    if (log.status !== 'SUCCESS') {
+      throw new BadRequestException(
+        'AI processing must be successful before approval',
+      );
+    }
+
+    if (log.operation !== AIOperation.GENERATE_QUESTIONS) {
+      throw new BadRequestException('Only generated questions can be approved');
+    }
+
+    if (!log.knowledgeId) {
+      throw new BadRequestException(
+        'AI processing log is not linked to Knowledge',
+      );
+    }
+
+    await this.knowledgeService.findOne(log.knowledgeId, accountId);
+
+    if (!log.output) {
+      throw new BadRequestException(
+        'AI processing result does not contain output',
+      );
+    }
+
+    const output = log.output as unknown as GeneratedQuestionsLogOutput;
+
+    if (!Array.isArray(output.questions) || output.questions.length === 0) {
+      throw new BadRequestException(
+        'AI processing result does not contain questions',
+      );
+    }
+
+    if (output.approved) {
+      throw new BadRequestException(
+        'These questions have already been approved',
+      );
+    }
+
+    const createdQuestions = await this.questionsService.createMany(
+      log.knowledgeId,
+      output.questions.map((question) => ({
+        type: question.type,
+        prompt: question.prompt,
+
+        correctAnswer: question.correctAnswer,
+
+        options: question.options === null ? undefined : question.options,
+      })),
+    );
+
+    await this.aiProcessingLogsService.markSuccess(log.id, {
+      questions: output.questions,
+
+      approved: true,
+    } as unknown as Prisma.InputJsonValue);
+
+    return {
+      processingLogId: log.id,
+      questions: createdQuestions,
+    };
   }
 }
