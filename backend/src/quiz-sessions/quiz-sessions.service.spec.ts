@@ -1,10 +1,10 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { LearningProgressService } from '../learning-progress/learning-progress.service';
 import { PrismaService } from '../prisma/prisma.service';
+
 import { QuizSessionsService } from './quiz-sessions.service';
 
 type AsyncMock = (...args: unknown[]) => Promise<unknown>;
@@ -27,6 +27,14 @@ describe('QuizSessionsService', () => {
     question: {
       findMany: jest.fn<AsyncMock>(),
     },
+
+    answer: {
+      findMany: jest.fn<AsyncMock>(),
+    },
+  };
+
+  const learningProgressServiceMock = {
+    processKnowledgeReview: jest.fn<AsyncMock>(),
   };
 
   beforeEach(async () => {
@@ -38,6 +46,10 @@ describe('QuizSessionsService', () => {
         {
           provide: PrismaService,
           useValue: prismaMock,
+        },
+        {
+          provide: LearningProgressService,
+          useValue: learningProgressServiceMock,
         },
       ],
     }).compile();
@@ -158,7 +170,7 @@ describe('QuizSessionsService', () => {
     expect(prismaMock.quizSession.create).not.toHaveBeenCalled();
   });
 
-  it('should return questions without correctAnswer', async () => {
+  it('should return new and due questions without correctAnswer', async () => {
     const session = {
       id: 'session-1',
       learnerId: 'learner-1',
@@ -187,6 +199,26 @@ describe('QuizSessionsService', () => {
           collection: {
             learnerId: 'learner-1',
           },
+          OR: [
+            {
+              reviewSchedules: {
+                none: {
+                  learnerId: 'learner-1',
+                },
+              },
+            },
+            {
+              reviewSchedules: {
+                some: {
+                  learnerId: 'learner-1',
+                  status: 'SCHEDULED',
+                  nextReviewAt: {
+                    lte: expect.any(Date),
+                  },
+                },
+              },
+            },
+          ],
         },
       },
       orderBy: {
@@ -240,16 +272,53 @@ describe('QuizSessionsService', () => {
     expect(prismaMock.question.findMany).not.toHaveBeenCalled();
   });
 
-  it('should complete owned quiz session', async () => {
-    prismaMock.quizSession.findFirst.mockResolvedValue({
+  it('should complete quiz session and process each knowledge once', async () => {
+    const session = {
       id: 'session-1',
       learnerId: 'learner-1',
+      startedAt: new Date(),
       completedAt: null,
-    });
+    };
+
+    prismaMock.quizSession.findFirst.mockResolvedValue(session);
+
+    prismaMock.answer.findMany.mockResolvedValue([
+      {
+        isCorrect: true,
+        question: {
+          knowledgeId: 'knowledge-1',
+        },
+      },
+      {
+        isCorrect: true,
+        question: {
+          knowledgeId: 'knowledge-1',
+        },
+      },
+      {
+        isCorrect: false,
+        question: {
+          knowledgeId: 'knowledge-1',
+        },
+      },
+      {
+        isCorrect: true,
+        question: {
+          knowledgeId: 'knowledge-1',
+        },
+      },
+      {
+        isCorrect: false,
+        question: {
+          knowledgeId: 'knowledge-2',
+        },
+      },
+    ]);
+
+    learningProgressServiceMock.processKnowledgeReview.mockResolvedValue({});
 
     const completedSession = {
-      id: 'session-1',
-      learnerId: 'learner-1',
+      ...session,
       completedAt: new Date(),
       answers: [],
     };
@@ -257,6 +326,32 @@ describe('QuizSessionsService', () => {
     prismaMock.quizSession.update.mockResolvedValue(completedSession);
 
     const result = await service.complete('session-1', 'account-1');
+
+    expect(prismaMock.answer.findMany).toHaveBeenCalledWith({
+      where: {
+        quizSessionId: 'session-1',
+      },
+      select: {
+        isCorrect: true,
+        question: {
+          select: {
+            knowledgeId: true,
+          },
+        },
+      },
+    });
+
+    expect(
+      learningProgressServiceMock.processKnowledgeReview,
+    ).toHaveBeenCalledTimes(2);
+
+    expect(
+      learningProgressServiceMock.processKnowledgeReview,
+    ).toHaveBeenCalledWith('learner-1', 'knowledge-1', 3, 1);
+
+    expect(
+      learningProgressServiceMock.processKnowledgeReview,
+    ).toHaveBeenCalledWith('learner-1', 'knowledge-2', 0, 1);
 
     expect(prismaMock.quizSession.update).toHaveBeenCalledWith({
       where: {
@@ -280,6 +375,12 @@ describe('QuizSessionsService', () => {
       service.complete('foreign-session', 'account-1'),
     ).rejects.toThrow('Quiz session not found');
 
+    expect(prismaMock.answer.findMany).not.toHaveBeenCalled();
+
+    expect(
+      learningProgressServiceMock.processKnowledgeReview,
+    ).not.toHaveBeenCalled();
+
     expect(prismaMock.quizSession.update).not.toHaveBeenCalled();
   });
 
@@ -293,6 +394,12 @@ describe('QuizSessionsService', () => {
     await expect(service.complete('session-1', 'account-1')).rejects.toThrow(
       BadRequestException,
     );
+
+    expect(prismaMock.answer.findMany).not.toHaveBeenCalled();
+
+    expect(
+      learningProgressServiceMock.processKnowledgeReview,
+    ).not.toHaveBeenCalled();
 
     expect(prismaMock.quizSession.update).not.toHaveBeenCalled();
   });

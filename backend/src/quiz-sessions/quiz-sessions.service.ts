@@ -4,10 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { LearningProgressService } from '../learning-progress/learning-progress.service';
 
 @Injectable()
 export class QuizSessionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly learningProgressService: LearningProgressService,
+  ) {}
 
   async findAll(accountId: string) {
     return this.prisma.quizSession.findMany({
@@ -65,12 +69,36 @@ export class QuizSessionsService {
       throw new BadRequestException('Quiz session has already been completed');
     }
 
+    const now = new Date();
+
     return this.prisma.question.findMany({
       where: {
         knowledge: {
           collection: {
             learnerId: session.learnerId,
           },
+          OR: [
+            {
+              // New Knowledge that has never been reviewed.
+              reviewSchedules: {
+                none: {
+                  learnerId: session.learnerId,
+                },
+              },
+            },
+            {
+              // Knowledge whose scheduled review is already due.
+              reviewSchedules: {
+                some: {
+                  learnerId: session.learnerId,
+                  status: 'SCHEDULED',
+                  nextReviewAt: {
+                    lte: now,
+                  },
+                },
+              },
+            },
+          ],
         },
       },
       orderBy: {
@@ -91,6 +119,54 @@ export class QuizSessionsService {
 
     if (session.completedAt) {
       throw new BadRequestException('Quiz session has already been completed');
+    }
+
+    const answers = await this.prisma.answer.findMany({
+      where: {
+        quizSessionId: id,
+      },
+      select: {
+        isCorrect: true,
+        question: {
+          select: {
+            knowledgeId: true,
+          },
+        },
+      },
+    });
+
+    const resultsByKnowledge = new Map<
+      string,
+      {
+        correct: number;
+        incorrect: number;
+      }
+    >();
+
+    for (const answer of answers) {
+      const knowledgeId = answer.question.knowledgeId;
+
+      const current = resultsByKnowledge.get(knowledgeId) ?? {
+        correct: 0,
+        incorrect: 0,
+      };
+
+      if (answer.isCorrect) {
+        current.correct += 1;
+      } else {
+        current.incorrect += 1;
+      }
+
+      resultsByKnowledge.set(knowledgeId, current);
+    }
+
+    for (const [knowledgeId, result] of resultsByKnowledge) {
+      await this.learningProgressService.processKnowledgeReview(
+        session.learnerId,
+        knowledgeId,
+        result.correct,
+        result.incorrect,
+      );
     }
 
     return this.prisma.quizSession.update({

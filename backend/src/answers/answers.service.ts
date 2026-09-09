@@ -3,16 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { LearningProgressService } from '../learning-progress/learning-progress.service';
 
 @Injectable()
 export class AnswersService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly learningProgressService: LearningProgressService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAll(accountId: string) {
     return this.prisma.answer.findMany({
@@ -73,7 +70,7 @@ export class AnswersService {
     const isCorrect =
       JSON.stringify(answer) === JSON.stringify(question.correctAnswer);
 
-    const createdAnswer = await this.prisma.answer.create({
+    return this.prisma.answer.create({
       data: {
         quizSessionId,
         questionId,
@@ -81,13 +78,5 @@ export class AnswersService {
         isCorrect,
       },
     });
-
-    await this.learningProgressService.processAnswer(
-      session.learnerId,
-      question.knowledgeId,
-      isCorrect,
-    );
-
-    return createdAnswer;
   }
 }

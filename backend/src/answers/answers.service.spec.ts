@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { LearningProgressService } from '../learning-progress/learning-progress.service';
+
 import { AnswersService } from './answers.service';
 
 type AsyncMock = (...args: unknown[]) => Promise<unknown>;
@@ -28,10 +28,6 @@ describe('AnswersService', () => {
     },
   };
 
-  const learningProgressServiceMock = {
-    processAnswer: jest.fn<AsyncMock>(),
-  };
-
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -41,10 +37,6 @@ describe('AnswersService', () => {
         {
           provide: PrismaService,
           useValue: prismaMock,
-        },
-        {
-          provide: LearningProgressService,
-          useValue: learningProgressServiceMock,
         },
       ],
     }).compile();
@@ -86,7 +78,7 @@ describe('AnswersService', () => {
     expect(result).toEqual(answers);
   });
 
-  it('should create a correct answer and update learning progress', async () => {
+  it('should create a correct answer', async () => {
     const session = {
       id: 'session-1',
       learnerId: 'learner-1',
@@ -113,8 +105,6 @@ describe('AnswersService', () => {
     prismaMock.question.findFirst.mockResolvedValue(question);
 
     prismaMock.answer.create.mockResolvedValue(createdAnswer);
-
-    learningProgressServiceMock.processAnswer.mockResolvedValue({});
 
     const result = await service.create(
       'session-1',
@@ -155,16 +145,10 @@ describe('AnswersService', () => {
       },
     });
 
-    expect(learningProgressServiceMock.processAnswer).toHaveBeenCalledWith(
-      'learner-1',
-      'knowledge-1',
-      true,
-    );
-
     expect(result).toEqual(createdAnswer);
   });
 
-  it('should create an incorrect answer and update learning progress', async () => {
+  it('should create an incorrect answer', async () => {
     const session = {
       id: 'session-1',
       learnerId: 'learner-1',
@@ -192,8 +176,6 @@ describe('AnswersService', () => {
 
     prismaMock.answer.create.mockResolvedValue(createdAnswer);
 
-    learningProgressServiceMock.processAnswer.mockResolvedValue({});
-
     const result = await service.create(
       'session-1',
       'question-1',
@@ -209,12 +191,6 @@ describe('AnswersService', () => {
         isCorrect: false,
       },
     });
-
-    expect(learningProgressServiceMock.processAnswer).toHaveBeenCalledWith(
-      'learner-1',
-      'knowledge-1',
-      false,
-    );
 
     expect(result).toEqual(createdAnswer);
   });
@@ -233,8 +209,6 @@ describe('AnswersService', () => {
     expect(prismaMock.question.findFirst).not.toHaveBeenCalled();
 
     expect(prismaMock.answer.create).not.toHaveBeenCalled();
-
-    expect(learningProgressServiceMock.processAnswer).not.toHaveBeenCalled();
   });
 
   it('should reject answers for a completed quiz session', async () => {
@@ -255,8 +229,6 @@ describe('AnswersService', () => {
     expect(prismaMock.question.findFirst).not.toHaveBeenCalled();
 
     expect(prismaMock.answer.create).not.toHaveBeenCalled();
-
-    expect(learningProgressServiceMock.processAnswer).not.toHaveBeenCalled();
   });
 
   it('should reject a question that does not belong to the session learner', async () => {
@@ -291,7 +263,5 @@ describe('AnswersService', () => {
     });
 
     expect(prismaMock.answer.create).not.toHaveBeenCalled();
-
-    expect(learningProgressServiceMock.processAnswer).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AiProcessingLogsModule } from 'src/ai-processing-logs/ai-processing-logs.module';
-import { KnowledgeModule } from 'src/knowledge/knowledge.module';
-import { QuestionsModule } from 'src/questions/questions.module';
+import { AiProcessingLogsModule } from '../ai-processing-logs/ai-processing-logs.module';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
+import { QuestionsModule } from '../questions/questions.module';
 import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 

@@ -84,7 +84,28 @@ export class LearningProgressService {
     knowledgeId: string,
     correct: boolean,
   ) {
-    const quality = correct ? 4 : 2;
+    return this.processKnowledgeReview(
+      learnerId,
+      knowledgeId,
+      correct ? 1 : 0,
+      correct ? 0 : 1,
+    );
+  }
+
+  async processKnowledgeReview(
+    learnerId: string,
+    knowledgeId: string,
+    correctCount: number,
+    incorrectCount: number,
+  ) {
+    const totalReviewAnswers = correctCount + incorrectCount;
+
+    if (totalReviewAnswers === 0) {
+      return null;
+    }
+
+    const reviewPassed = correctCount > incorrectCount;
+    const quality = reviewPassed ? 4 : 2;
 
     let progress = await this.prisma.learningProgress.findUnique({
       where: {
@@ -111,9 +132,9 @@ export class LearningProgressService {
       progress.interval,
     );
 
-    const correctAnswers = progress.correctAnswers + (correct ? 1 : 0);
+    const correctAnswers = progress.correctAnswers + correctCount;
 
-    const incorrectAnswers = progress.incorrectAnswers + (correct ? 0 : 1);
+    const incorrectAnswers = progress.incorrectAnswers + incorrectCount;
 
     const totalAnswers = correctAnswers + incorrectAnswers;
 
