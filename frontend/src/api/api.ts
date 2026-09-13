@@ -209,6 +209,15 @@ export function getLearners() {
   return request<Learner[]>('/learners')
 }
 
+export function createLearner(name: string) {
+  return request<Learner>('/learners', {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+    }),
+  })
+}
+
 export function getKnowledgeCollections() {
   return request<KnowledgeCollection[]>(
     '/knowledge-collections',

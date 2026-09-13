@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   approveGeneratedQuestions,
   approveStructuredKnowledge,
+  createLearner,
   generateQuestions,
   getKnowledgeCollections,
   getLearners,
@@ -24,6 +25,9 @@ export function DashboardPage() {
   const { account, logout } = useAuth();
 
   const [learners, setLearners] = useState<Learner[]>([]);
+  const [learnerName, setLearnerName] = useState("");
+  const [creatingLearner, setCreatingLearner] = useState(false);
+  const [learnerError, setLearnerError] = useState<string | null>(null);
   const [collections, setCollections] = useState<KnowledgeCollection[]>([]);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
@@ -83,6 +87,37 @@ export function DashboardPage() {
     void loadDashboard();
   }, []);
 
+  async function handleCreateLearner() {
+  const name = learnerName.trim();
+
+  if (!name) {
+    setLearnerError("Введіть ім’я профілю.");
+    return;
+  }
+
+  setLearnerError(null);
+  setCreatingLearner(true);
+
+  try {
+    const learner = await createLearner(name);
+
+    setLearners((current) => [
+      learner,
+      ...current,
+    ]);
+
+    setLearnerName("");
+  } catch (error) {
+    setLearnerError(
+      error instanceof Error
+        ? error.message
+        : "Не вдалося створити профіль.",
+    );
+  } finally {
+    setCreatingLearner(false);
+  }
+}
+
   async function handleStructureKnowledge() {
     const content = sourceContent.trim();
 
@@ -114,57 +149,56 @@ export function DashboardPage() {
   }
 
   async function handleApprove() {
-  if (!aiResult) {
-    return;
-  }
+    if (!aiResult) {
+      return;
+    }
 
-  if (!selectedCollectionId) {
-    setError("Оберіть колекцію знань.");
-    return;
-  }
+    if (!selectedCollectionId) {
+      setError("Оберіть колекцію знань.");
+      return;
+    }
 
-  setError(null);
-  setApproving(true);
-
-  try {
-    const knowledge = await approveStructuredKnowledge(
-      aiResult.processingLogId,
-      selectedCollectionId,
-    );
-
-    setSavedKnowledge(knowledge);
-    setAiResult(null);
-    setSourceContent("");
-
-    setGeneratedQuestions([]);
-    setQuestionsProcessingLogId(null);
-    setQuestionsApproved(false);
-
-    // Одразу після збереження Knowledge запускаємо AI-генерацію питань
-    setGeneratingQuestions(true);
+    setError(null);
+    setApproving(true);
 
     try {
-      const result = await generateQuestions(knowledge.id);
+      const knowledge = await approveStructuredKnowledge(
+        aiResult.processingLogId,
+        selectedCollectionId,
+      );
 
-      setGeneratedQuestions(result.questions);
-      setQuestionsProcessingLogId(result.processingLogId);
+      setSavedKnowledge(knowledge);
+      setAiResult(null);
+      setSourceContent("");
+
+      setGeneratedQuestions([]);
+      setQuestionsProcessingLogId(null);
+      setQuestionsApproved(false);
+
+      setGeneratingQuestions(true);
+
+      try {
+        const result = await generateQuestions(knowledge.id);
+
+        setGeneratedQuestions(result.questions);
+        setQuestionsProcessingLogId(result.processingLogId);
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Знання збережено, але не вдалося згенерувати запитання.",
+        );
+      } finally {
+        setGeneratingQuestions(false);
+      }
     } catch (error) {
       setError(
-        error instanceof Error
-          ? error.message
-          : "Знання збережено, але не вдалося згенерувати запитання.",
+        error instanceof Error ? error.message : "Не вдалося зберегти знання.",
       );
     } finally {
-      setGeneratingQuestions(false);
+      setApproving(false);
     }
-  } catch (error) {
-    setError(
-      error instanceof Error ? error.message : "Не вдалося зберегти знання.",
-    );
-  } finally {
-    setApproving(false);
   }
-}
 
   async function handleGenerateQuestions() {
     if (!savedKnowledge) {
@@ -273,39 +307,92 @@ export function DashboardPage() {
         </section>
 
         <section className="dashboard-section">
-          <div className="section-heading">
-            <div>
-              <h2>Профілі навчання</h2>
+  <div className="section-heading">
+    <div>
+      <h2>Профілі навчання</h2>
 
-              <p>Learner, доступні вашому акаунту.</p>
-            </div>
-          </div>
+      <p>
+        Створіть профіль, для якого Memora буде зберігати
+        знання та навчальний прогрес.
+      </p>
+    </div>
+  </div>
 
-          {loading && <div className="status-card">Завантаження...</div>}
+  <div className="learner-create-card">
+    <h3>Новий профіль</h3>
 
-          {!loading && learners.length === 0 && (
-            <div className="status-card">Профілі ще не створені.</div>
-          )}
+    <label>
+      Ім’я профілю
 
-          <div className="learner-grid">
-            {learners.map((learner) => (
-              <article className="learner-card" key={learner.id}>
-                <div className="avatar">
-                  {learner.name.charAt(0).toUpperCase()}
-                </div>
+      <input
+        value={learnerName}
+        onChange={(event) =>
+          setLearnerName(event.target.value)
+        }
+        placeholder="Наприклад: Наталя"
+        disabled={creatingLearner}
+      />
+    </label>
 
-                <div>
-                  <h3>{learner.name}</h3>
+    <button
+      type="button"
+      className="primary-button"
+      onClick={() => void handleCreateLearner()}
+      disabled={
+        creatingLearner ||
+        !learnerName.trim()
+      }
+    >
+      {creatingLearner
+        ? "Створюємо..."
+        : "Створити профіль"}
+    </button>
+  </div>
 
-                  <p>
-                    Telegram:{" "}
-                    {learner.telegramChatId ? "підключено" : "не підключено"}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+  {learnerError && (
+    <div className="error-message">
+      {learnerError}
+    </div>
+  )}
+
+  {loading && (
+    <div className="status-card">
+      Завантаження...
+    </div>
+  )}
+
+  {!loading && learners.length === 0 && (
+    <div className="status-card">
+      Профілі ще не створені. Створіть перший профіль вище.
+    </div>
+  )}
+
+  <div className="learner-grid">
+    {learners.map((learner) => (
+      <article
+        className="learner-card"
+        key={learner.id}
+      >
+        <div className="avatar">
+          {learner.name
+            .charAt(0)
+            .toUpperCase()}
+        </div>
+
+        <div>
+          <h3>{learner.name}</h3>
+
+          <p>
+            Telegram:{" "}
+            {learner.telegramChatId
+              ? "підключено"
+              : "не підключено"}
+          </p>
+        </div>
+      </article>
+    ))}
+  </div>
+</section>
 
         <CollectionsSection
           learners={learners}
