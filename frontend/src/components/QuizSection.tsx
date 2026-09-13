@@ -145,7 +145,7 @@ export function QuizSection({
 
       if (quizQuestions.length === 0) {
         setError(
-          'Для цього профілю ще немає запитань.',
+          'Наразі немає знань, доступних для повторення.',
         )
         return
       }
@@ -347,9 +347,9 @@ export function QuizSection({
 
           <p className="quiz-result-note">
             LearningProgress та
-            ReviewSchedule оновлено
-            backend-сервісом після кожної
-            відповіді.
+            ReviewSchedule оновлено після
+            завершення тесту на основі
+            результату для кожного Knowledge.
           </p>
 
           <button
@@ -357,7 +357,7 @@ export function QuizSection({
             className="primary-button"
             onClick={handleNewQuiz}
           >
-            Пройти ще раз
+            Перевірити доступні знання
           </button>
         </div>
       </section>
@@ -378,10 +378,9 @@ export function QuizSection({
             </h2>
 
             <p>
-              Пройдіть тест. Після кожної
-              відповіді Memora оновить
-              прогрес та дату наступного
-              повторення.
+              Пройдіть тест. Після завершення
+              Memora оновить прогрес та дату
+              наступного повторення.
             </p>
           </div>
         </div>

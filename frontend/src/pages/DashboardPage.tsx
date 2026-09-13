@@ -570,44 +570,46 @@ export function DashboardPage() {
                 </div>
               </div>
 
-              <div className="question-list">
-                {generatedQuestions.map((question, index) => (
-                  <article
-                    className="question-card"
-                    key={`${question.prompt}-${index}`}
-                  >
-                    <div className="question-number">{index + 1}</div>
+              {!questionsApproved && (
+                <div className="question-list">
+                  {generatedQuestions.map((question, index) => (
+                    <article
+                      className="question-card"
+                      key={`${question.prompt}-${index}`}
+                    >
+                      <div className="question-number">{index + 1}</div>
 
-                    <div className="question-content">
-                      <span className="question-type">{question.type}</span>
+                      <div className="question-content">
+                        <span className="question-type">{question.type}</span>
 
-                      <h4>{question.prompt}</h4>
+                        <h4>{question.prompt}</h4>
 
-                      {question.options && question.options.length > 0 && (
-                        <ul className="question-options">
-                          {question.options.map((option, optionIndex) => (
-                            <li key={`${option}-${optionIndex}`}>{option}</li>
-                          ))}
-                        </ul>
-                      )}
+                        {question.options && question.options.length > 0 && (
+                          <ul className="question-options">
+                            {question.options.map((option, optionIndex) => (
+                              <li key={`${option}-${optionIndex}`}>{option}</li>
+                            ))}
+                          </ul>
+                        )}
 
-                      <div className="correct-answer-preview">
-                        <span>Правильна відповідь</span>
+                        <div className="correct-answer-preview">
+                          <span>Правильна відповідь</span>
 
-                        <strong>
-                          {Array.isArray(question.correctAnswer)
-                            ? question.correctAnswer.join(", ")
-                            : typeof question.correctAnswer === "boolean"
-                              ? question.correctAnswer
-                                ? "Правда"
-                                : "Неправда"
-                              : question.correctAnswer}
-                        </strong>
+                          <strong>
+                            {Array.isArray(question.correctAnswer)
+                              ? question.correctAnswer.join(", ")
+                              : typeof question.correctAnswer === "boolean"
+                                ? question.correctAnswer
+                                  ? "Правда"
+                                  : "Неправда"
+                                : question.correctAnswer}
+                          </strong>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
+                    </article>
+                  ))}
+                </div>
+              )}
 
               {!questionsApproved && (
                 <div className="preview-actions question-approval-actions">
