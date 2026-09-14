@@ -1916,3 +1916,141 @@ body {
     transition: none;
   }
 }
+
+/* ---------- TELEGRAM CONNECTION ---------- */
+
+.learner-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.learner-info {
+  min-width: 0;
+}
+
+.telegram-invite {
+  margin: 0;
+  color: var(--memora-muted);
+  line-height: 1.45;
+}
+
+.telegram-connected-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  padding: 9px 12px;
+  border: 1px solid var(--memora-teal);
+  border-radius: 8px 16px 8px 16px;
+  background: #e3f4ee;
+  color: var(--memora-ink);
+}
+
+.telegram-connected-status > div {
+  display: grid;
+  gap: 2px;
+}
+
+.telegram-connected-status strong {
+  font-size: 0.9rem;
+}
+
+.telegram-connected-status small {
+  color: var(--memora-muted);
+  font-size: 0.76rem;
+}
+
+.telegram-status-dot {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border: 2px solid var(--memora-ink);
+  border-radius: 50%;
+  background: var(--memora-cyan);
+  box-shadow: 2px 2px 0 var(--memora-pink);
+}
+
+.telegram-connect-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 16px;
+  border: 1px dashed var(--memora-teal);
+  border-radius: 8px 18px 8px 18px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(143, 216, 212, 0.18),
+      rgba(255, 253, 245, 0.92)
+    );
+}
+
+.telegram-connect-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.telegram-connect-copy strong {
+  color: var(--memora-ink);
+  font-size: 0.95rem;
+}
+
+.telegram-connect-copy span {
+  color: var(--memora-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.telegram-connect-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.telegram-connect-controls input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border: 2px solid var(--memora-line);
+  border-radius: 8px 14px 8px 14px;
+  outline: none;
+  background: var(--memora-paper);
+  color: var(--memora-ink);
+  font: inherit;
+}
+
+.telegram-connect-controls input:focus {
+  border-color: var(--memora-pink);
+  box-shadow: 4px 4px 0 rgba(15, 123, 136, 0.18);
+}
+
+.telegram-connect-button {
+  white-space: nowrap;
+}
+
+.telegram-inline-error {
+  padding: 9px 11px;
+  border: 1px solid #bd315d;
+  border-radius: 8px 14px 8px 14px;
+  background: #fff0f4;
+  color: #8e2144;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 700px) {
+  .learner-card {
+    grid-template-columns: auto 1fr;
+  }
+
+  .telegram-connect-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .telegram-connect-button {
+    width: 100%;
+  }
+}
+

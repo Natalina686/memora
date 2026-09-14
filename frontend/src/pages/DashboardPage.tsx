@@ -4,6 +4,7 @@ import {
   approveGeneratedQuestions,
   approveStructuredKnowledge,
   createLearner,
+  connectLearnerTelegram,
   generateQuestions,
   getKnowledgeCollections,
   getLearners,
@@ -28,6 +29,9 @@ export function DashboardPage() {
   const [learnerName, setLearnerName] = useState("");
   const [creatingLearner, setCreatingLearner] = useState(false);
   const [learnerError, setLearnerError] = useState<string | null>(null);
+  const [telegramChatIds, setTelegramChatIds] = useState<Record<string, string>>({});
+  const [connectingTelegramId, setConnectingTelegramId] = useState<string | null>(null);
+  const [telegramErrors, setTelegramErrors] = useState<Record<string, string>>({});
   const [collections, setCollections] = useState<KnowledgeCollection[]>([]);
 
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
@@ -88,35 +92,87 @@ export function DashboardPage() {
   }, []);
 
   async function handleCreateLearner() {
-  const name = learnerName.trim();
+    const name = learnerName.trim();
 
-  if (!name) {
-    setLearnerError("Введіть ім’я профілю.");
-    return;
+    if (!name) {
+      setLearnerError("Введіть ім’я профілю.");
+      return;
+    }
+
+    setLearnerError(null);
+    setCreatingLearner(true);
+
+    try {
+      const learner = await createLearner(name);
+
+      setLearners((current) => [learner, ...current]);
+      setLearnerName("");
+    } catch (error) {
+      setLearnerError(
+        error instanceof Error
+          ? error.message
+          : "Не вдалося створити профіль.",
+      );
+    } finally {
+      setCreatingLearner(false);
+    }
   }
 
-  setLearnerError(null);
-  setCreatingLearner(true);
+  async function handleConnectTelegram(learnerId: string) {
+    const chatId = telegramChatIds[learnerId]?.trim() ?? "";
 
-  try {
-    const learner = await createLearner(name);
+    if (!chatId) {
+      setTelegramErrors((current) => ({
+        ...current,
+        [learnerId]: "Введіть Telegram Chat ID.",
+      }));
+      return;
+    }
 
-    setLearners((current) => [
-      learner,
+    if (!/^-?\d+$/.test(chatId)) {
+      setTelegramErrors((current) => ({
+        ...current,
+        [learnerId]: "Chat ID має містити тільки цифри.",
+      }));
+      return;
+    }
+
+    setTelegramErrors((current) => ({
       ...current,
-    ]);
+      [learnerId]: "",
+    }));
+    setConnectingTelegramId(learnerId);
 
-    setLearnerName("");
-  } catch (error) {
-    setLearnerError(
-      error instanceof Error
-        ? error.message
-        : "Не вдалося створити профіль.",
-    );
-  } finally {
-    setCreatingLearner(false);
+    try {
+      const updatedLearner = await connectLearnerTelegram(
+        learnerId,
+        chatId,
+      );
+
+      setLearners((current) =>
+        current.map((learner) =>
+          learner.id === updatedLearner.id
+            ? updatedLearner
+            : learner,
+        ),
+      );
+
+      setTelegramChatIds((current) => ({
+        ...current,
+        [learnerId]: "",
+      }));
+    } catch (error) {
+      setTelegramErrors((current) => ({
+        ...current,
+        [learnerId]:
+          error instanceof Error
+            ? error.message
+            : "Не вдалося підключити Telegram.",
+      }));
+    } finally {
+      setConnectingTelegramId(null);
+    }
   }
-}
 
   async function handleStructureKnowledge() {
     const content = sourceContent.trim();
@@ -379,16 +435,83 @@ export function DashboardPage() {
             .toUpperCase()}
         </div>
 
-        <div>
+        <div className="learner-info">
           <h3>{learner.name}</h3>
 
-          <p>
-            Telegram:{" "}
-            {learner.telegramChatId
-              ? "підключено"
-              : "не підключено"}
-          </p>
+          {learner.telegramChatId ? (
+            <div className="telegram-connected-status">
+              <span
+                className="telegram-status-dot"
+                aria-hidden="true"
+              />
+
+              <div>
+                <strong>Telegram підключено</strong>
+                <small>
+                  Профіль прив’язано до @memora_learning_bot
+                </small>
+              </div>
+            </div>
+          ) : (
+            <p className="telegram-invite">
+              Підключіть Telegram як канал для навчальних
+              сповіщень.
+            </p>
+          )}
         </div>
+
+        {!learner.telegramChatId && (
+          <div className="telegram-connect-panel">
+            <div className="telegram-connect-copy">
+              <strong>Telegram-канал</strong>
+
+              <span>
+                Надішліть <b>/start</b> боту
+                {" "}
+                <b>@memora_learning_bot</b>, а потім
+                введіть свій Chat ID.
+              </span>
+            </div>
+
+            <div className="telegram-connect-controls">
+              <input
+                value={telegramChatIds[learner.id] ?? ""}
+                onChange={(event) =>
+                  setTelegramChatIds((current) => ({
+                    ...current,
+                    [learner.id]: event.target.value,
+                  }))
+                }
+                placeholder="Telegram Chat ID"
+                inputMode="numeric"
+                aria-label={`Telegram Chat ID для ${learner.name}`}
+                disabled={connectingTelegramId === learner.id}
+              />
+
+              <button
+                type="button"
+                className="primary-button telegram-connect-button"
+                onClick={() =>
+                  void handleConnectTelegram(learner.id)
+                }
+                disabled={
+                  connectingTelegramId === learner.id ||
+                  !(telegramChatIds[learner.id] ?? "").trim()
+                }
+              >
+                {connectingTelegramId === learner.id
+                  ? "Підключаємо..."
+                  : "Підключити Telegram"}
+              </button>
+            </div>
+
+            {telegramErrors[learner.id] && (
+              <div className="telegram-inline-error">
+                {telegramErrors[learner.id]}
+              </div>
+            )}
+          </div>
+        )}
       </article>
     ))}
   </div>

@@ -218,6 +218,21 @@ export function createLearner(name: string) {
   })
 }
 
+export function connectLearnerTelegram(
+  learnerId: string,
+  telegramChatId: string,
+) {
+  return request<Learner>(
+    `/learners/${learnerId}/telegram`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        telegramChatId,
+      }),
+    },
+  )
+}
+
 export function getKnowledgeCollections() {
   return request<KnowledgeCollection[]>(
     '/knowledge-collections',
