@@ -98,6 +98,23 @@ AI operations are recorded in `AIProcessingLog`.
 * PostgreSQL 17
 * GitHub
 
+## Production Deployment
+
+The MVP is deployed and publicly available.
+
+- Frontend: Vercel
+- Backend: Railway
+- Database: PostgreSQL on Railway
+- External AI service: OpenAI API
+
+### Live Demo
+
+Frontend:
+https://memora-frontend-beta.vercel.app
+
+Backend health endpoint:
+https://memora-production-dd9b.up.railway.app/api/v1
+
 ## Architecture
 
 The application is implemented as a **Modular Monolith**.
@@ -372,10 +389,9 @@ Planned improvements:
 1. transactional answer/progress/review updates;
 2. automatic `ReviewSchedule → Notification` flow;
 3. improved answer normalization;
-4. expanded integration and end-to-end testing;
-5. due-review based quiz selection;
-6. production deployment and monitoring;
-7. comparison of SM-2 with FSRS after enough learning history is collected.
+4. expanded integration and end-to-end testing
+5. production deployment and monitoring;
+6. comparison of SM-2 with FSRS after enough learning history is collected.
 
 ## Diploma Project
 
